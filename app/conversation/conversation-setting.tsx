@@ -8,7 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { useConversationSettingStore } from '@/src/conversation/store/conversationsetting.store';
+import { useConversationSettingStore, SpeechEngine } from '@/src/conversation/store/conversationsetting.store';
 import React from 'react';
 
 // Reuse PickerModal implementation from profile/edit.tsx
@@ -53,15 +53,22 @@ const LANGUAGE_OPTIONS = [
   { label: 'English (UK)', value: 'en-GB' },
 ];
 
+const SPEECH_ENGINE_OPTIONS = [
+  { label: 'ElevenLabs', value: 'elevenlabs' as SpeechEngine },
+  { label: 'System Speech', value: 'system' as SpeechEngine },
+];
+
 const ConversationSettingScreen = () => {
   // State management
   const {
     language,
     speed,
     autoSpeech,
+    speechEngine,
     setLanguage,
     setSpeed,
     setAutoSpeech,
+    setSpeechEngine,
   } = useConversationSettingStore();
 
   return (
@@ -98,6 +105,31 @@ const ConversationSettingScreen = () => {
         <HStack className="justify-between items-center py-2">
           <Text>Auto Speech</Text>
           <Switch value={autoSpeech} onValueChange={setAutoSpeech} size="md" />
+        </HStack>
+        <Divider />
+        {/* Speech Engine Selection */}
+        <HStack className="justify-between items-center py-2">
+          <Text>Speech Engine</Text>
+          <Menu
+            trigger={triggerProps => (
+              <Button
+                variant="outline"
+                size="sm"
+                {...triggerProps}
+                // onPress controlled by triggerProps
+              >
+                <ButtonText>{SPEECH_ENGINE_OPTIONS.find(opt => opt.value === speechEngine)?.label}</ButtonText>
+                <Icon as={ChevronRightIcon} size="sm" />
+              </Button>
+            )}
+          >
+            {SPEECH_ENGINE_OPTIONS.map(opt => (
+              <MenuItem key={opt.value} onPress={() => setSpeechEngine(opt.value)}>
+                <MenuItemLabel bold={speechEngine === opt.value}>{opt.label}</MenuItemLabel>
+                {speechEngine === opt.value && <Icon as={CheckIcon} size="sm" className="ml-2" />}
+              </MenuItem>
+            ))}
+          </Menu>
         </HStack>
       </VStack>
     </VStack>

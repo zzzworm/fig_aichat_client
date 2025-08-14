@@ -1,4 +1,5 @@
-import SystemSpeech from '@/src/utils/speech';
+import elevenLabsSpeech from '@/src/utils/elevenlabs-speech';
+import systemSpeech from '@/src/utils/system-speech';
 import { create } from 'zustand';
 import { useAuthStore } from '../../auth/stores/auth.store';
 import chatService from '../services/chat.service';
@@ -6,7 +7,7 @@ import { UserProfile } from '@/src/auth/types/user';
 import { AICharacter, AIConversation, ChatMessage, ConversationUserMessage, conversationToAnswerMessage,conversationToChatMessage, Pagination, conversationToUserMessage } from '../types';
 import { useConversationSettingStore } from './conversationsetting.store';
 import removeMarkdown from 'remove-markdown';
-import { uuidv4 } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 
 interface CharacterConversationState {
   character?: AICharacter;
@@ -38,9 +39,9 @@ export const useCharacterConversationStore = create<CharacterConversationState>(
 
   fetchHistory: async (characterId: string) => {
 
-    console.log("fetchHistory called, getConversationHistory");
+    // console.log("fetchHistory called, getConversationHistory");
     try {
-      console.log("fetchHistory called, getCharacterConversationList");
+      // console.log("fetchHistory called, getCharacterConversationList");
       const response = await chatService.getConversationList(characterId, 1, 20);
       const conversations = response.data;
       const currenUser = useAuthStore.getState().user;
@@ -50,9 +51,10 @@ export const useCharacterConversationStore = create<CharacterConversationState>(
           if(!item.user) item.user = currenUser as UserProfile;
           return conversationToChatMessage(item);
         })
+        .filter((msg): msg is ChatMessage => msg !== null);
       const hasMore = pagination.page < pagination.pageCount;
       
-      console.log("fetchHistory called, getConversationHistory");
+      // console.log("fetchHistory called, getConversationHistory");
       set({ 
         conversationHistory: messages, 
         pagination, 
@@ -83,6 +85,7 @@ export const useCharacterConversationStore = create<CharacterConversationState>(
           if(!item.user) item.user = currenUser as UserProfile;
           return conversationToChatMessage(item);
         })
+        .filter((msg): msg is ChatMessage => msg !== null);
       const hasMore = newPagination.page < newPagination.pageCount;
       
       set({
@@ -106,24 +109,41 @@ export const useCharacterConversationStore = create<CharacterConversationState>(
       return;
     }
     console.log("user message:", userMessage.query);
-    const tempMessage = conversationToUserMessage({
+    
+    // Create temporary user message
+    const tempUserConversation: AIConversation = {
       id: Date.now(),
       documentId: userMessage.message_id,
       query: userMessage.query,
       updatedAt: new Date(),
       createdAt: new Date(),
       user: user,
-    });
+    };
+    
+    const tempMessage = conversationToUserMessage(tempUserConversation);
 
-    const tempAnserMessage = conversationToAnswerMessage({
-      id:  Date.now()+1,
+    // Create temporary answer message
+    const tempAnswerConversation: AIConversation = {
+      id: Date.now() + 1,
       documentId: uuidv4(),
+      query: userMessage.query,
       answer: "Thinking",
       updatedAt: new Date(),
-      createdAt: new Date()
-    });
+      createdAt: new Date(),
+      user: user,
+    };
+    
+    const tempAnswerMessage = conversationToAnswerMessage(tempAnswerConversation);
+    
+    if (!tempAnswerMessage) {
+      console.error('Failed to create temporary answer message');
+      return;
+    }
 
-    set(state => ({ conversationHistory: [tempAnserMessage,tempMessage, ...state.conversationHistory], isNewMessage: false }));
+    set(state => ({ 
+      conversationHistory: [tempAnswerMessage, tempMessage, ...state.conversationHistory], 
+      isNewMessage: false 
+    }));
 
     try {
       const response = await chatService.createCharacterConversation(characterId, userMessage);
@@ -134,15 +154,27 @@ export const useCharacterConversationStore = create<CharacterConversationState>(
       console.log("answerMessage:", answerMessage.answer);
       const newMessage = conversationToAnswerMessage(answerMessage);
       
-      const allMessages = [newMessage,queryChatMessage,...get().conversationHistory];
+      if (!newMessage) {
+        console.error('Failed to create answer message');
+        return;
+      }
       
-      //if autoSpeech is true, speak the message
+      const allMessages = [newMessage, queryChatMessage, ...get().conversationHistory];
+      
+      // If autoSpeech is true, speak the message using selected speech engine
       if (useConversationSettingStore.getState().autoSpeech) {
         const pureText = removeMarkdown(newMessage.text);
-        SystemSpeech.speak(pureText, {
-          language: useConversationSettingStore.getState().language,
-          rate: useConversationSettingStore.getState().speed,
-        });
+        const { speechEngine, language } = useConversationSettingStore.getState();
+        
+        if (speechEngine === 'elevenlabs') {
+          elevenLabsSpeech.speak(pureText, {
+            language: language,
+          });
+        } else if (speechEngine === 'system') {
+          systemSpeech.speak(pureText, {
+            language: language,
+          });
+        }
       }
       
       set({

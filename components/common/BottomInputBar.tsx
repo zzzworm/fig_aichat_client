@@ -1,12 +1,13 @@
-import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
+import { Button, ButtonIcon } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import speechTranscribeService from '@/src/api/speech.transcribe.service';
 import { KeyboardIcon, MicIcon, SendIcon } from 'lucide-react-native';
 
 import React, { useState } from 'react';
-import { TextInput } from 'react-native';
+import { Alert, TextInput } from 'react-native';
+import HoldRecordButton from './HoldRecordButton';
 
 interface BottomInputBarProps {
   value?: string;
@@ -18,6 +19,7 @@ interface BottomInputBarProps {
 
 export const BottomInputBar = ({ value, onChangeText, placeholder, speechMode, onSubmit: onSubmit }: BottomInputBarProps) => {
   const [message, setMessage] = useState(value ?? "");
+  const [isSpeechMode, setIsSpeechMode] = useState(speechMode ?? false);
 
   const handleSend = () => {
     if (message.trim()) {
@@ -26,84 +28,59 @@ export const BottomInputBar = ({ value, onChangeText, placeholder, speechMode, o
     }
   };
 
-  const [isRecognizing, setIsRecognizing] = useState(false);
-  const [isSpeechMode, setIsSpeechMode] = useState(speechMode ?? false);
+  // Handle recording completion
+  const handleRecordingComplete = async (uri: string | null) => {
+    if (!uri) {
+      console.warn('Recording failed, no audio file obtained');
+      Alert.alert('Recording Failed', 'Failed to obtain audio file, please try again');
+      return;
+    }
 
-  useSpeechRecognitionEvent('start', () => {
-    setIsRecognizing(true);
-  });
+    console.log('Recording completed, starting transcription:', uri);
 
-  useSpeechRecognitionEvent('end', () => {
-    setIsRecognizing(false);
-    setIsSpeechMode(false);
-  });
-
-  useSpeechRecognitionEvent('result', (event) => {
-    if (event.results && event.results[0]) {
-      onChangeText?.(event.results[0].transcript);
-      setMessage(event.results[0].transcript);
+    try {
+      // Call transcription API
+      const result = await speechTranscribeService.transcribe(uri);
+      console.log('💬 Transcription result:', result.transcription);
+      
+      // Update text content and switch back to text mode
+      if (result.transcription && result.transcription.trim()) {
+        const transcribedText = result.transcription.trim();
+        setMessage(transcribedText);
+        onChangeText?.(transcribedText);
+        
+        // Switch back to text input mode
+        setIsSpeechMode(false);
+        
+        // Show transcription success prompt
+        if (result.confidence && result.confidence > 0.8) {
+          console.log(`Transcription successful, confidence: ${(result.confidence * 100).toFixed(1)}%`);
+        }
+      }
+    } catch (error) {
+      console.error('Transcription failed:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Transcription failed, please try again';
+      
+      Alert.alert('Transcription Failed', errorMsg);
+      // Switch back to text input mode even on error
       setIsSpeechMode(false);
     }
-  });
-
-  useSpeechRecognitionEvent('error', (event) => {
-    console.error('Speech recognition error', event.error, event.message);
-    setIsRecognizing(false);
-  });
-
-  const handlePermissions = async () => {
-    const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-    if (!result.granted) {
-      console.warn('Permissions not granted for speech recognition');
-    }
-    return result.granted;
-  };
-
-  const startRecognition = async () => {
-    const hasPermissions = await handlePermissions();
-    if (!hasPermissions) return;
-
-    const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
-    console.log("Speech recognition available:", available);
-    // e.g. ["com.google.android.as", "com.google.android.tts", "com.samsung.android.bixby.agent"]
-
-    await ExpoSpeechRecognitionModule.start({
-      lang: 'en-US',
-      interimResults: true,
-      continuous: true, // Keep recognizing until stopped
-    });
-  };
-
-  const stopRecognition = async () => {
-    await ExpoSpeechRecognitionModule.stop();
   };
 
   const toggleInputMode = () => {
     setIsSpeechMode(!isSpeechMode);
-    if (isRecognizing) {
-        stopRecognition();
-    }
   };
 
 
   return (
     <VStack className="border-t border-gray-200 dark:border-gray-700">
       {isSpeechMode ? (
-        <Button 
-          onPressIn={startRecognition}
-          onPressOut={stopRecognition}
-          className="bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 h-10 justify-center items-center"
-        >
-          <ButtonText className="text-dark dark:text-white">
-            {isRecognizing ? '正在识别...' : '按住说话'}
-          </ButtonText>
-        </Button>
+        <HoldRecordButton onRecordingComplete={handleRecordingComplete} className='h-8' />
       ) : (
         <TextInput
             value={message}
             onChangeText={(text) => {
               onChangeText?.(text);
-              setIsSpeechMode(false);
               setMessage(text);
             }}
             placeholder={placeholder}
@@ -111,6 +88,10 @@ export const BottomInputBar = ({ value, onChangeText, placeholder, speechMode, o
             onSubmitEditing={handleSend}
             returnKeyType="send"
             className="bg-white dark:bg-gray-800 ml-2 mr-2 min-h-10"
+            editable={!isSpeechMode} // Disable text input when in speech mode
+            blurOnSubmit={false}
+            autoFocus={false}
+            keyboardType="default"
           />
       )}
       <HStack className="bg-clear border-t border-gray-200 dark:border-gray-700 items-center">

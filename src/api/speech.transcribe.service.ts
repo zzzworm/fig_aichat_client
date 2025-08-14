@@ -9,7 +9,7 @@ import {
  * Provides speech transcription and analysis functionality
  * Uses react-native-blob-util to optimize file upload performance
  */
-class SpeechAnalysisService {
+class SpeechTranscribeService {
   private readonly baseUrl = process.env.EXPO_PUBLIC_ASR_SERVICE_URL || 'http://localhost:8011';
 
   /**
@@ -30,7 +30,7 @@ class SpeechAnalysisService {
       // Get filename and MIME type
       const fileName = audioUri.split('/').pop() || 'recording.wav';
       const mimeType = this.getMimeType(fileName);
-      
+      console.log('baseUrl', this.baseUrl);
       // Send multipart/form-data request using react-native-blob-util
       const response = await ReactNativeBlobUtil.fetch(
         'POST',
@@ -153,7 +153,4 @@ class SpeechAnalysisService {
 }
 
 // Export singleton instance
-export default new SpeechAnalysisService();
-
-// Also export the class for creating new instances when needed
-export { SpeechAnalysisService };
+export default new SpeechTranscribeService();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Platform,
   Alert,
   Animated,
+  BackHandler,
 } from "react-native";
 import { HStack } from "@/components/ui/hstack";
 import { useConversation } from "@elevenlabs/react-native";
@@ -15,11 +16,11 @@ import type {
   Role,
 } from "@elevenlabs/react-native";
 import { getBatteryLevel, changeBrightness, flashScreen } from "@/src/utils/tools";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { useLocalSearchParams, useNavigation, useFocusEffect } from "expo-router";
 import { useAICharacterStore } from "@/src/conversation/store/character.store";
 import { AICharacter } from "@/src/conversation/types/character";
 import HoldRecordButton from "@/components/common/HoldRecordButton";
-import speechanalysisService from "@/src/api/speechanalysis.service";
+import speechTranscribeService from "@/src/api/speech.transcribe.service";
 import { PhoneIcon, PhoneOffIcon } from "lucide-react-native";
 
 const VoiceChatScreen = () => {
@@ -169,7 +170,7 @@ const VoiceChatScreen = () => {
 
       try {
         // Call transcription API
-        const result = await speechanalysisService.transcribe(uri);
+        const result = await speechTranscribeService.transcribe(uri);
         console.log('💬 User says:', result.transcription);
         
         // Send transcription result to conversation
@@ -216,6 +217,97 @@ const VoiceChatScreen = () => {
         console.error("Failed to end conversation:", error);
       }
     };
+
+    // Cleanup function to end conversation when leaving the screen
+    const cleanupConversation = useCallback(async () => {
+      if (conversation.status === "connected") {
+        console.log("🔄 Cleaning up conversation before navigation...");
+        try {
+          await conversation.endSession();
+        } catch (error) {
+          console.error("Failed to cleanup conversation:", error);
+        }
+      }
+    }, [conversation]);
+
+    // Handle navigation events (back button, gesture, etc.)
+    useFocusEffect(
+      useCallback(() => {
+        const onBeforeRemove = (e: any) => {
+          // If conversation is not connected, allow navigation
+          if (conversation.status !== "connected") {
+            return;
+          }
+
+          // Prevent default behavior of leaving the screen
+          e.preventDefault();
+
+          // Show confirmation alert
+          Alert.alert(
+            'End Voice Chat?',
+            'You are currently in a voice conversation. Do you want to end the conversation and leave?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => {
+                  console.log('User cancelled navigation');
+                },
+              },
+              {
+                text: 'End & Leave',
+                style: 'destructive',
+                onPress: async () => {
+                  console.log('User confirmed to end conversation and leave');
+                  await cleanupConversation();
+                  // Dispatch the action again to actually leave
+                  navigation.dispatch(e.data.action);
+                },
+              },
+            ]
+          );
+        };
+
+        // Add the listener
+        const unsubscribe = navigation.addListener('beforeRemove', onBeforeRemove);
+
+        // Android hardware back button handler
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+          if (conversation.status === "connected") {
+            Alert.alert(
+              'End Voice Chat?',
+              'You are currently in a voice conversation. Do you want to end the conversation and leave?',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                  onPress: () => {
+                    console.log('User cancelled Android back navigation');
+                  },
+                },
+                {
+                  text: 'End & Leave',
+                  style: 'destructive',
+                  onPress: async () => {
+                    console.log('User confirmed Android back navigation');
+                    await cleanupConversation();
+                    navigation.goBack();
+                  },
+                },
+              ]
+            );
+            return true; // Prevent default back action
+          }
+          return false; // Allow default back action
+        });
+
+        // Cleanup function
+        return () => {
+          unsubscribe();
+          backHandler.remove();
+        };
+      }, [navigation, conversation.status, cleanupConversation])
+    );
 
     const canStart = conversation.status === "disconnected" && !isStarting && character !== null;
     
@@ -347,7 +439,7 @@ const VoiceChatScreen = () => {
               }}
             >
               {conversation.status === "connected" && (
-                  <HoldRecordButton className="h-20" onRecordingComplete={handleRecordingComplete} />
+                  <HoldRecordButton className="h-20 m-3 rounded-full" onRecordingComplete={handleRecordingComplete} />
               )}
             </Animated.View>
           </HStack>

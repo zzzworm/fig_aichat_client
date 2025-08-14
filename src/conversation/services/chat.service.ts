@@ -11,7 +11,7 @@ class ChatService {
       });
       return response;
     } catch (error) {
-      console.error('Error fetching AI teacher list:', error);
+      console.error('Error fetching AI Character list:', error);
       throw error;
     }
   }

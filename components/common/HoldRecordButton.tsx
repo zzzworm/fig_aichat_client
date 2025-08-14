@@ -146,7 +146,7 @@ const HoldRecordButton = forwardRef<HoldRecordButtonRef, HoldRecordButtonProps>(
     <Button
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      className={`flex-row justify-center m-3 rounded-full border ${
+      className={`flex-row justify-center border ${
         isHodding 
           ? 'bg-red-500 border-red-600' 
           : 'bg-gray-100 border-gray-300'

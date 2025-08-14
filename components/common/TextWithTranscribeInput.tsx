@@ -1,7 +1,7 @@
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
 import { Spinner } from '@/components/ui/spinner';
-import speechanalysisService from '@/src/api/speechanalysis.service';
+import speechTranscribeService from '@/src/api/speech.transcribe.service';
 import { KeyboardIcon, MicIcon } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, TextInput } from 'react-native';
@@ -32,7 +32,7 @@ export const TextWithTranscribeInput = ({
 }: TextWithTranscribeInputProps) => {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTranscribeMode, setIsTranscribeMode] = useState(transcribeMode ?? false);
-  const [recordingUri, setRecordingUri] = useState<string | null>(null);
+  // const [recordingUri, setRecordingUri] = useState<string | null>(null);
 
   // Listen for external transcribeMode changes
   React.useEffect(() => {
@@ -48,13 +48,13 @@ export const TextWithTranscribeInput = ({
     }
 
     console.log('Recording completed, starting transcription:', uri);
-    setRecordingUri(uri);
+    // setRecordingUri(uri);
     setIsTranscribing(true);
     onTranscribeStart?.();
 
     try {
       // Call transcription API
-      const result = await speechanalysisService.transcribe(uri);
+      const result = await speechTranscribeService.transcribe(uri);
       console.log('Transcription result:', result.transcription);
       
       // Update text content
@@ -79,7 +79,7 @@ export const TextWithTranscribeInput = ({
       Alert.alert('Transcription Failed', errorMsg);
     } finally {
       setIsTranscribing(false);
-      setRecordingUri(null);
+      // setRecordingUri(null);
     }
   };
 
@@ -135,7 +135,10 @@ export const TextWithTranscribeInput = ({
           value={value}
           onChangeText={(text) => {
             onChangeText(text);
-            setIsTranscribeMode(false);
+            // Only exit transcribe mode if user is actually typing (not when setting value programmatically)
+            if (text !== value && !isTranscribing) {
+              setIsTranscribeMode(false);
+            }
           }}
           placeholder={placeholder}
           multiline={true}
