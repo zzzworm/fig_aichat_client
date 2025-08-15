@@ -1,27 +1,26 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { HStack } from "@/components/ui/hstack";
+import { useAICharacterStore } from "@/src/conversation/store/character.store";
+import { AICharacter } from "@/src/conversation/types/character";
+import { AudioRoute, audioRouteController } from "@/src/utils/audio-route";
+import { changeBrightness, flashScreen, getBatteryLevel } from "@/src/utils/tools";
+import type {
+  ConversationEvent,
+  ConversationStatus,
+  Role,
+} from "@elevenlabs/react-native";
+import { useConversation } from "@elevenlabs/react-native";
+import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
+import { PhoneIcon, PhoneOffIcon, PodcastIcon, Volume2Icon } from "lucide-react-native";
+import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  Platform,
   Alert,
   Animated,
   BackHandler,
+  Platform,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { HStack } from "@/components/ui/hstack";
-import { useConversation } from "@elevenlabs/react-native";
-import type {
-  ConversationStatus,
-  ConversationEvent,
-  Role,
-} from "@elevenlabs/react-native";
-import { getBatteryLevel, changeBrightness, flashScreen } from "@/src/utils/tools";
-import { useLocalSearchParams, useNavigation, useFocusEffect } from "expo-router";
-import { useAICharacterStore } from "@/src/conversation/store/character.store";
-import { AICharacter } from "@/src/conversation/types/character";
-import HoldRecordButton from "@/components/common/HoldRecordButton";
-import speechTranscribeService from "@/src/api/speech.transcribe.service";
-import { PhoneIcon, PhoneOffIcon } from "lucide-react-native";
 
 const VoiceChatScreen = () => {
     const params = useLocalSearchParams();
@@ -100,14 +99,16 @@ const VoiceChatScreen = () => {
             console.log(`🤖 AI says: "${aiText}"`);
             setAiSpeechText(aiText);
           }
-          // Check if there is audio content
-        //   if ('audio' in message && message.audio) {
-        //     console.log(`🎵 AI audio received:`, message.audio);
-        //   }
-          // Check message type
-        //   if ('type' in message && message.type) {
-        //     console.log(`📝 AI message type: ${message.type}`, message);
-        //   }
+          // check for user transcript
+          if ('user_transcription_event' in message && 
+              message.user_transcription_event && 
+              typeof message.user_transcription_event === 'object' &&
+              'user_transcript' in message.user_transcription_event &&
+              typeof message.user_transcription_event.user_transcript === 'string' &&
+              message.user_transcription_event.user_transcript.trim()) {
+            const userText = message.user_transcription_event.user_transcript.trim();
+            console.log(`👤 User says: "${userText}"`);
+          }
         }
         
         // console.log(`💬 Message from ${source}:`, message);
@@ -131,6 +132,7 @@ const VoiceChatScreen = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [voiceButtonAnimation] = useState(new Animated.Value(0));
     const [aiSpeechText, setAiSpeechText] = useState<string>("");
+    const [isSpeakerOn, setIsSpeakerOn] = useState(true); // 音频输出状态：true=扬声器，false=听筒
 
     // Listen for AI speaking state changes, reset Processing state
     useEffect(() => {
@@ -158,45 +160,63 @@ const VoiceChatScreen = () => {
         }
     }, [conversation.status, voiceButtonAnimation]);
   
-    // Handle voice transcription completion
-    const handleRecordingComplete = async (uri: string | null) => {
-      if (!uri) {
-        console.warn('Recording failed, no audio file obtained');
-        Alert.alert('Recording Failed', 'Failed to obtain audio file, please try again');
-        return;
-      }
-
-    //   console.log('Recording completed, starting transcription:', uri);
-
+    // 切换音频输出设备（扬声器/听筒）
+    const toggleAudioOutput = async () => {
       try {
-        // Call transcription API
-        const result = await speechTranscribeService.transcribe(uri);
-        console.log('💬 User says:', result.transcription);
-        
-        // Send transcription result to conversation
-        if (result.transcription && result.transcription.trim()) {
-          setIsProcessing(true); // Set Processing state
-          conversation.sendUserMessage(result.transcription.trim());
-          
-          // Show transcription success prompt
-          if (result.confidence && result.confidence > 0.8) {
-            console.log(`Transcription successful, confidence: ${(result.confidence * 100).toFixed(1)}%`);
-          }
+        // 检查通话会话是否活跃
+        if (!audioRouteController.isInCallActive()) {
+          console.warn('⚠️ InCall session not active, initializing...');
+          await audioRouteController.initializeForConversation(isSpeakerOn ? 'speaker' : 'earpiece');
         }
-      } catch (error) {
-        console.error('Transcription failed:', error);
-        const errorMsg = error instanceof Error ? error.message : 'Transcription failed, please try again';
+
+        const currentRoute = audioRouteController.getCurrentRoute();
+        const newRoute: AudioRoute = currentRoute === 'speaker' ? 'earpiece' : 'speaker';
         
-        Alert.alert('Transcription Failed', errorMsg);
-        setIsProcessing(false); // Reset Processing state on error
+        console.log(`🔄 Switching audio from ${currentRoute} to ${newRoute} via InCallManager`);
+        
+        // 使用音频路由控制器切换
+        const actualRoute = await audioRouteController.toggleAudioRoute();
+        
+        // 更新 UI 状态
+        setIsSpeakerOn(actualRoute === 'speaker');
+        
+        console.log(`🔊 Audio output switched to: ${actualRoute} via InCallManager`);
+        
+        
+      } catch (error) {
+        console.error('Failed to toggle audio output via InCallManager:', error);
+        
+        // 尝试刷新音频路由作为恢复措施
+        try {
+          await audioRouteController.refreshAudioRoute();
+          console.log('🔄 Audio route refreshed as recovery');
+        } catch (refreshError) {
+          console.error('Failed to refresh audio route:', refreshError);
+        }
+        
+        Alert.alert('Audio Output', 'Failed to switch audio output device. Please try again.');
       }
     };
   
+    // 初始化音频模式
+    const initializeAudioMode = async () => {
+      try {
+        const preferredRoute: AudioRoute = isSpeakerOn ? 'speaker' : 'earpiece';
+        await audioRouteController.initializeForConversation(preferredRoute);
+        console.log(`🎵 Audio mode initialized with output: ${preferredRoute}`);
+      } catch (error) {
+        console.error('Failed to initialize audio mode:', error);
+      }
+    };
+
     const startConversation = async () => {
       if (isStarting || !character) return;
   
       setIsStarting(true);
       try {
+        // 初始化音频模式
+        await initializeAudioMode();
+        
         await conversation.startSession({
           agentId: character.agentId,
           dynamicVariables: {
@@ -213,6 +233,8 @@ const VoiceChatScreen = () => {
     const endConversation = async () => {
       try {
         await conversation.endSession();
+        // 清理音频设置
+        await audioRouteController.cleanup();
       } catch (error) {
         console.error("Failed to end conversation:", error);
       }
@@ -224,6 +246,8 @@ const VoiceChatScreen = () => {
         console.log("🔄 Cleaning up conversation before navigation...");
         try {
           await conversation.endSession();
+          // 清理音频设置
+          await audioRouteController.cleanup();
         } catch (error) {
           console.error("Failed to cleanup conversation:", error);
         }
@@ -404,7 +428,7 @@ const VoiceChatScreen = () => {
 
         {/* Bottom Controls - Conversation Control Button and Voice Input Button */}
         <View className="absolute bottom-5 left-0 right-0">
-          <HStack space="md" className="justify-center items-center">
+          <HStack space="lg" className="justify-center items-center">
             {/* Conversation Control Button */}
             <TouchableOpacity
               className={`w-20 h-20 rounded-full items-center justify-center ${
@@ -426,7 +450,7 @@ const VoiceChatScreen = () => {
               )}
             </TouchableOpacity>
 
-            {/* Voice Input Button - Only show when connected with animation */}
+            {/* Audio Output Toggle Button - Only show when connected with animation */}
             <Animated.View
               style={{
                 opacity: voiceButtonAnimation,
@@ -439,7 +463,18 @@ const VoiceChatScreen = () => {
               }}
             >
               {conversation.status === "connected" && (
-                  <HoldRecordButton className="h-20 m-3 rounded-full" onRecordingComplete={handleRecordingComplete} />
+                <TouchableOpacity
+                  className={`w-20 h-20 rounded-full items-center justify-center ${
+                    isSpeakerOn ? "bg-blue-500" : "bg-gray-500"
+                  }`}
+                  onPress={toggleAudioOutput}
+                >
+                  {isSpeakerOn ? (
+                    <Volume2Icon size={24} color="white" />
+                  ) : (
+                    <PodcastIcon size={24} color="white" />
+                  )}
+                </TouchableOpacity>
               )}
             </Animated.View>
           </HStack>
