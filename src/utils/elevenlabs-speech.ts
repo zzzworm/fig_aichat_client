@@ -2,6 +2,7 @@ import { useSpeechStore } from '../stores/speech.store';
 import { Platform } from 'react-native';
 import { createAudioPlayer } from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
+import { audioRouteController } from './audio-route';
 
 const setSpeeching = useSpeechStore.getState().setSpeeching;
 
@@ -73,6 +74,8 @@ class ElevenLabsSpeechService {
     setSpeeching(true);
 
     try {
+      // Activate speakerphone for TTS playback
+      await audioRouteController.initializeForConversation('speaker');
       console.log('🎤 Starting ElevenLabs speech synthesis for text:', text.substring(0, 100) + '...');
       
       const response = await fetch(`${this.baseUrl}/text-to-speech/${options.voiceId || '21m00Tcm4TlvDq8ikWAM'}`, {
@@ -97,12 +100,27 @@ class ElevenLabsSpeechService {
         throw new Error(`ElevenLabs API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
+      // Wrap original onDone and onError to include cleanup
+      const originalOnDone = options.onDone;
+      const originalOnError = options.onError;
+
+      const cleanupAndCallback = (callback?: (...args: any[]) => void, ...args: any[]) => {
+        audioRouteController.cleanup();
+        callback?.(...args);
+      };
+
+      const enhancedOptions = {
+        ...options,
+        onDone: () => cleanupAndCallback(originalOnDone),
+        onError: (error: any) => cleanupAndCallback(originalOnError, error),
+      };
+
       if (Platform.OS === 'web') {
         // Web platform implementation
-        await this.playAudioWeb(response);
+        await this.playAudioWeb(response, enhancedOptions);
       } else {
         // React Native platform implementation
-        await this.playAudioReactNative(response);
+        await this.playAudioReactNative(response, enhancedOptions);
       }
 
       console.log('✅ ElevenLabs speech synthesis completed successfully');
@@ -110,6 +128,8 @@ class ElevenLabsSpeechService {
     } catch (error) {
       console.error('❌ ElevenLabs speech synthesis error:', error);
       setSpeeching(false);
+      // Ensure cleanup happens on error too
+      audioRouteController.cleanup();
       options.onError?.(error);
     }
   }
@@ -117,7 +137,7 @@ class ElevenLabsSpeechService {
   /**
    * Play audio on web platform
    */
-  private async playAudioWeb(response: Response) {
+  private async playAudioWeb(response: Response, options: ElevenLabsSpeechOptions) {
     const audioBlob = await response.blob();
     const audioUrl = URL.createObjectURL(audioBlob);
 
@@ -127,12 +147,14 @@ class ElevenLabsSpeechService {
     this.currentAudio.onended = () => {
       setSpeeching(false);
       URL.revokeObjectURL(audioUrl);
+      options.onDone?.();
     };
 
     this.currentAudio.onerror = (error: Event) => {
       console.error('ElevenLabs audio playback error:', error);
       setSpeeching(false);
       URL.revokeObjectURL(audioUrl);
+      options.onError?.(error);
     };
 
     // Play the audio
@@ -142,7 +164,7 @@ class ElevenLabsSpeechService {
   /**
    * Play audio on React Native platform using expo-audio
    */
-  private async playAudioReactNative(response: Response) {
+  private async playAudioReactNative(response: Response, options: ElevenLabsSpeechOptions) {
     try {
       console.log('📱 Starting React Native audio playback with expo-audio');
       
@@ -176,7 +198,7 @@ class ElevenLabsSpeechService {
       this.audioPlayer = createAudioPlayer(tempFileUri);
       
       // Set up status monitoring
-      this.monitorAudioPlayback(tempFileUri);
+      this.monitorAudioPlayback(tempFileUri, options);
       
       // Start playback
       console.log('🎵 Starting audio playback...');
@@ -185,6 +207,7 @@ class ElevenLabsSpeechService {
     } catch (error: unknown) {
       console.error('React Native audio playback error:', error);
       setSpeeching(false);
+      options.onError?.(error);
     }
   }
 
@@ -193,7 +216,7 @@ class ElevenLabsSpeechService {
    * Note: This is a simplified monitoring approach.
    * In a real React component, you would use useAudioPlayerStatus hook.
    */
-  private monitorAudioPlayback(tempFileUri: string) {
+  private monitorAudioPlayback(tempFileUri: string, options: ElevenLabsSpeechOptions) {
     if (!this.audioPlayer) return;
     
     let statusCheckInterval: any;
@@ -223,7 +246,7 @@ class ElevenLabsSpeechService {
         }
       } catch (error) {
         console.error('Error checking audio status:', error);
-        this.handleAudioCompletion(tempFileUri);
+        this.handleAudioCompletion(tempFileUri, options);
         hasCompleted = true;
       }
     };
@@ -236,7 +259,7 @@ class ElevenLabsSpeechService {
     setTimeout(() => {
       if (!hasCompleted) {
         console.log('✅ Audio playback completed (fallback timer)');
-        this.handleAudioCompletion(tempFileUri);
+        this.handleAudioCompletion(tempFileUri, options);
         hasCompleted = true;
       }
       if (statusCheckInterval) {
@@ -248,7 +271,7 @@ class ElevenLabsSpeechService {
   /**
    * Handle audio playback completion
    */
-  private async handleAudioCompletion(tempFileUri: string) {
+  private async handleAudioCompletion(tempFileUri: string, options: ElevenLabsSpeechOptions) {
     console.log('✅ Audio playback completed');
     setSpeeching(false);
     
@@ -272,6 +295,8 @@ class ElevenLabsSpeechService {
     } catch (error) {
       console.warn('Error deleting temporary audio file:', error);
     }
+
+    options.onDone?.();
   }
 
   /**
@@ -301,6 +326,8 @@ class ElevenLabsSpeechService {
       }
     }
     
+    // Cleanup audio route
+    audioRouteController.cleanup();
     setSpeeching(false);
   }
 

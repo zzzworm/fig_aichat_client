@@ -1,6 +1,7 @@
 import { useSpeechStore } from '../stores/speech.store';
 import { Platform } from 'react-native';
 import * as Speech from 'expo-speech';
+import { audioRouteController } from './audio-route';
 
 const setSpeeching = useSpeechStore.getState().setSpeeching;
 
@@ -36,18 +37,37 @@ class SystemSpeechService {
     setSpeeching(true);
 
     try {
+      // Activate speakerphone for TTS playback
+      await audioRouteController.initializeForConversation('speaker');
       console.log('🎤 Starting system speech synthesis for text:', text.substring(0, 100) + '...');
 
+      // Wrap original onDone and onError to include cleanup
+      const originalOnDone = options.onDone;
+      const originalOnError = options.onError;
+
+      const cleanupAndCallback = (callback?: (...args: any[]) => void, ...args: any[]) => {
+        audioRouteController.cleanup();
+        callback?.(...args);
+      };
+
+      const enhancedOptions = {
+        ...options,
+        onDone: () => cleanupAndCallback(originalOnDone),
+        onError: (error: any) => cleanupAndCallback(originalOnError, error),
+      };
+
       if (Platform.OS === 'web') {
-        await this.speakWeb(text, options);
+        await this.speakWeb(text, enhancedOptions);
       } else {
-        await this.speakReactNative(text, options);
+        await this.speakReactNative(text, enhancedOptions);
       }
 
       console.log('✅ System speech synthesis completed successfully');
     } catch (error) {
       console.error('❌ System speech synthesis error:', error);
       setSpeeching(false);
+      // Ensure cleanup happens on error too
+      audioRouteController.cleanup();
       options.onError?.(error);
     }
   }
