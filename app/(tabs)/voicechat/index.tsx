@@ -5,16 +5,17 @@ import { Pressable } from '@/components/ui/pressable';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { View } from '@/components/ui/view';
+import { useAuthStore } from '@/src/auth/stores/auth.store';
 import { useAICharacterStore } from '@/src/conversation/store/character.store';
 import { useCharacterConversationStore } from '@/src/conversation/store/conversation.store';
 import { AICharacter } from '@/src/conversation/types/character';
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { FlatList } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 
 const VoiceChatTabScreen = () => {
   const router = useRouter();
+  const { isLoggedIn } = useAuthStore();
 
   const {
     aiCharacterList,
@@ -33,10 +34,14 @@ const VoiceChatTabScreen = () => {
   // );
 
   useEffect(() => {
-    if (dataLoadingStatus === 'notStarted') {
+    // 只有在用户已登录时才获取角色列表
+    if (isLoggedIn && dataLoadingStatus === 'notStarted') {
+      console.log('🔐 User is logged in, fetching AI characters for voice chat...');
       fetchAICharacters();
+    } else if (!isLoggedIn) {
+      console.log('🚫 User not logged in, skipping character list fetch for voice chat');
     }
-  }, [dataLoadingStatus, fetchAICharacters]);
+  }, [isLoggedIn, dataLoadingStatus, fetchAICharacters]);
 
   const handleCharacterPress = (character: AICharacter) => {
     setCharacter(character);
