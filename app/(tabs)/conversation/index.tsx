@@ -51,29 +51,46 @@ const ConversationTabScreen = () => {
   const renderContent = () => {
     if (dataLoadingStatus === 'loading' && aiCharacterList.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <Spinner size="large" />
+        <View className="flex-1 justify-center items-center px-6">
+          <View className="bg-white dark:bg-gray-800 rounded-2xl p-8 items-center shadow-md border border-gray-100 dark:border-gray-700">
+            <Spinner size="large" />
+            <Text className="text-gray-600 dark:text-gray-400 mt-4 text-center font-medium">
+              Loading AI Characters...
+            </Text>
+          </View>
         </View>
       );
     }
 
     if (dataLoadingStatus === 'error') {
       return (
-        <View className="flex-1 justify-center items-center p-5">
-          <Text className="text-center text-red-500 mb-4">
-            {error?.message || 'Could not load AI Characters. Please try again.'}
-          </Text>
-          <Button onPress={() => fetchAICharacters()}>
-            <ButtonText>Retry</ButtonText>
-          </Button>
+        <View className="flex-1 justify-center items-center px-6">
+          <View className="bg-white dark:bg-gray-800 rounded-2xl p-8 items-center shadow-md border border-gray-100 dark:border-gray-700">
+            <Text className="text-center text-red-500 mb-6 text-base font-medium leading-relaxed">
+              {error?.message || 'Could not load AI Characters. Please try again.'}
+            </Text>
+            <Button 
+              onPress={() => fetchAICharacters()}
+              className="bg-blue-600 rounded-2xl px-6 py-3 border border-blue-500"
+            >
+              <ButtonText className="text-white font-semibold">Retry</ButtonText>
+            </Button>
+          </View>
         </View>
       );
     }
 
     if (aiCharacterList.length === 0 && dataLoadingStatus === 'success') {
       return (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-gray-500">No AI coaches found</Text>
+        <View className="flex-1 justify-center items-center px-6">
+          <View className="bg-white dark:bg-gray-800 rounded-2xl p-8 items-center shadow-md border border-gray-100 dark:border-gray-700">
+            <Text className="text-gray-500 dark:text-gray-400 text-base font-medium">
+              No AI Characters found
+            </Text>
+            <Text className="text-gray-400 dark:text-gray-500 text-sm mt-2 text-center">
+              Check back later for new characters
+            </Text>
+          </View>
         </View>
       );
     }
@@ -83,11 +100,14 @@ const ConversationTabScreen = () => {
         data={aiCharacterList}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <Pressable onPress={() => handleCharacterPress(item)}>
+          <Pressable 
+            onPress={() => handleCharacterPress(item)}
+            className="active:opacity-70 transition-opacity"
+          >
              <CharacterCell aiCharacter={item} />
           </Pressable>
         )}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 24, paddingTop: 8 }}
         showsVerticalScrollIndicator={false}
         onRefresh={() => fetchAICharacters()}
         refreshing={dataLoadingStatus === 'loading'}

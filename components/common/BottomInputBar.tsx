@@ -73,36 +73,56 @@ export const BottomInputBar = ({ value, onChangeText, placeholder, speechMode, o
 
 
   return (
-    <VStack className="border-t border-gray-200 dark:border-gray-700">
+    <VStack className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg">
       {isSpeechMode ? (
-        <HoldRecordButton onRecordingComplete={handleRecordingComplete} className='h-8' />
+        <VStack className="px-4 py-3">
+          <HoldRecordButton onRecordingComplete={handleRecordingComplete} className="h-12" />
+        </VStack>
       ) : (
-        <TextInput
+        <VStack className="px-4 py-3">
+          <TextInput
             value={message}
             onChangeText={(text) => {
               onChangeText?.(text);
               setMessage(text);
             }}
             placeholder={placeholder}
+            placeholderTextColor="#9CA3AF"
             multiline={true}
             onSubmitEditing={handleSend}
             returnKeyType="send"
-            className="bg-white dark:bg-gray-800 ml-2 mr-2 min-h-10"
-            editable={!isSpeechMode} // Disable text input when in speech mode
+            className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white text-base min-h-[44px] max-h-32"
+            editable={!isSpeechMode}
             blurOnSubmit={false}
             autoFocus={false}
             keyboardType="default"
+            style={{ textAlignVertical: 'top' }}
           />
+        </VStack>
       )}
-      <HStack className="bg-clear border-t border-gray-200 dark:border-gray-700 items-center">
-        <Button onPress={toggleInputMode} className="bg-clear">
-          <ButtonIcon as={isSpeechMode ? KeyboardIcon : MicIcon} size="lg" className="text-dark dark:text-white" />
+      <HStack className="px-4 pb-3 items-center justify-between">
+        <Button 
+          onPress={toggleInputMode} 
+          className="bg-gray-100 dark:bg-gray-700 rounded-full p-3 border border-gray-200 dark:border-gray-600"
+        >
+          <ButtonIcon 
+            as={isSpeechMode ? KeyboardIcon : MicIcon} 
+            size="md" 
+            className="text-blue-600 dark:text-blue-400" 
+          />
         </Button>
-        <Text className=' flex-1 text-xs text-gray-500 text-center'>
-              AI Response is for reference only
+        <Text className="flex-1 text-xs text-gray-500 dark:text-gray-400 text-center px-4 font-medium">
+          AI Response is for reference only
         </Text>
-        <Button onPress={handleSend} className="bg-clear">
-          <ButtonIcon as={SendIcon} size="lg" className="text-dark dark:text-white" />
+        <Button 
+          onPress={handleSend} 
+          className="bg-blue-600 dark:bg-blue-500 rounded-full p-3 border border-blue-500 dark:border-blue-400"
+        >
+          <ButtonIcon 
+            as={SendIcon} 
+            size="md" 
+            className="text-white" 
+          />
         </Button>
       </HStack>
     </VStack>

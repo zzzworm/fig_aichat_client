@@ -427,8 +427,8 @@ const VoiceChatScreen = () => {
             )}
 
         {/* Bottom Controls - Conversation Control Button and Voice Input Button */}
-        <View className="absolute bottom-5 left-0 right-0">
-          <HStack space="lg" className="justify-center items-center">
+        <View className="absolute bottom-5">
+          <HStack space="2xl" className="justify-center items-center">
             {/* Conversation Control Button */}
             <TouchableOpacity
               className={`w-20 h-20 rounded-full items-center justify-center ${
