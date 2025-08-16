@@ -1,14 +1,17 @@
-import { Alert, AlertIcon, AlertText } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogBackdrop,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader
+} from '@/components/ui/alert-dialog';
 import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
-import { InfoIcon } from '@/components/ui/icon';
-import { Link } from '@/components/ui/link';
 import { Text } from '@/components/ui/text';
 import { View } from '@/components/ui/view';
-import { VStack } from '@/components/ui/vstack';
 
 import "@/global.css";
-import { useAuthStore } from '@/src/auth/stores/auth.store';
 import { FontAwesome5 } from '@expo/vector-icons';
 
 import Constants from 'expo-constants';
@@ -18,8 +21,6 @@ import React, { useState } from 'react';
 import { Image, TouchableOpacity } from "react-native";
 
 export default function IndexScreen() {
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [isPrivacyAlertVisible, setIsPrivacyAlertVisible] = useState(false);
 
@@ -37,63 +38,32 @@ export default function IndexScreen() {
   };
 
   return (
-
-      <View className="h-full w-full safe-area">
-        <View className="flex-1 items-center justify-start pt-[15%]">
-          <Text className="text-2xl font-bold text-dark mt-2">
+      <View className="h-full w-full bg-white">
+        {/* Header Section */}
+        <View className="flex-1 items-center justify-center pt-16 pb-4">
+          <Text className="text-4xl font-bold text-blue-600 mb-4 text-center">
             AI Chat Demo
           </Text>
+          <Text className="text-lg text-blue-500 text-center font-medium mb-8">
+            Connect with AI Characters
+          </Text>
         </View>
-        <View className="items-center justify-start bg-transparent">
-                <Image
-                  source={require('@/assets/images/react-logo.png')}
-                  className="w-50 h-50"
-                  resizeMode="contain"
-                  alt="Splash Logo"
-                />
-              </View>
-        <View className='m-4 justify-center rounded-lg p-4 items-center shadow-lg'>
-          {isPrivacyAlertVisible && (
-            <Alert
-              action="warning"
-              className="gap-4 max-w-[516px] w-full flex-row flex py-4 items-start self-center"
-            >
-              <AlertIcon as={InfoIcon} className="mt-1" />
-              <HStack className="justify-between flex-1 items-center gap-1 sm:gap-8">
-                <VStack className="flex-1">
-                  <Text className="font-semibold text-typography-900">
-                    Please agree to the terms and privacy policy
-                  </Text>
-                  <AlertText className="text-typography-900" size="sm">
-                    <Text>Click &quot;OK&quot; to agree to the terms and privacy policy</Text>
-                    <Text
-                      className="text-sm text-blue-700"
-                      onPress={() => openLink(Constants.expoConfig?.extra?.terms_url)}
-                    >
-                      Terms of Service
-                    </Text>{' '}
-                    and{' '}
-                    <Text
-                      className="text-sm text-blue-700"
-                      onPress={() => openLink(Constants.expoConfig?.extra?.privacy_url)}
-                    >
-                      Privacy Policy
-                    </Text>
-                  </AlertText>
-                </VStack>
-                <Button size="xs" onPress={() => {
-                  setIsChecked(true);
-                  setIsPrivacyAlertVisible(false);
-                  setError(null); 
-                }}>
-                  <ButtonText>OK</ButtonText>
-                </Button>
-              </HStack>
-            </Alert>
-          )}
+        
+        {/* Logo Section */}
+        <View className="items-center justify-center pb-8">
+          <View className="bg-blue-50 rounded-full p-6 border border-blue-200">
+            <Image
+              source={require('@/assets/images/react-logo.png')}
+              className="w-24 h-24"
+              resizeMode="contain"
+              alt="Splash Logo"
+            />
+          </View>
         </View>
 
-        <View className="m-4 justify-center rounded-lg p-4 items-center">
+
+        {/* Action Buttons Section */}
+        <View className="mx-6 mb-8 space-y-4 mt-10">
           <TouchableOpacity
             onPress={() => {
               if (!isChecked) {
@@ -102,12 +72,13 @@ export default function IndexScreen() {
               }
               navigateToScreen('/auth/sign-in');
             }}
-            className="w-full rounded-md items-center py-3 flex-row justify-center bg-blue-500 mb-4  shadow-md"
-            disabled={isLoading}
-            activeOpacity={0.7}
+            className="w-full rounded-2xl items-center py-4 flex-row justify-center bg-blue-600 mb-4 border border-blue-500"
+            activeOpacity={0.8}
           >
-            <FontAwesome5 name="envelope" size={24} color="#000000" />
-            <Text className="font-semibold text-base ml-4 text-center text-black">
+            <View className="rounded-full p-2 mr-3">
+              <FontAwesome5 name="envelope" size={20} color="#ffffff" />
+            </View>
+            <Text className="font-bold text-lg text-center text-white">
               Sign In
             </Text>
           </TouchableOpacity>
@@ -120,43 +91,104 @@ export default function IndexScreen() {
               }
               navigateToScreen('/auth/sign-up');
             }}
-            className="w-full rounded-md items-center py-3 flex-row justify-center bg-blue-500 mb-4  shadow-md"
-            disabled={isLoading}
-            activeOpacity={0.7}
+            className="w-full rounded-2xl items-center py-4 flex-row justify-center bg-cyan-500 mb-4 border border-cyan-400"
+            activeOpacity={0.8}
           >
-            <FontAwesome5 name="user-plus" size={24} color="#000000" />
-            <Text className="font-semibold text-base ml-4 text-center text-black">
+            <View className="rounded-full p-2 mr-3">
+              <FontAwesome5 name="user-plus" size={20} color="#ffffff" />
+            </View>
+            <Text className="font-bold text-lg text-center text-white">
               Sign Up
             </Text>
           </TouchableOpacity>
           
+          {/* Terms and Privacy Checkbox */}
           <TouchableOpacity
             onPress={() => {
               setIsChecked(!isChecked);
               setIsPrivacyAlertVisible(false);
-              setError(null); // Clear any previous error when toggling the checkbox
             }}
-            className="w-full items-center py-3 flex-row justify-center"
-            disabled={isLoading}
-            activeOpacity={0.7}
+            className="w-full items-center p-4 flex-row justify-center bg-gray-50 rounded-2xl border border-gray-200"
+            activeOpacity={0.8}
           >
-            <View className="w-5 h-5 rounded-full border-2 border-white mr-2 items-center justify-center">
+            <View className={`w-6 h-6 rounded-full border-2 mr-3 items-center justify-center ${
+              isChecked 
+                ? 'bg-blue-600 border-blue-600' 
+                : 'bg-white border-blue-300'
+            }`}>
               {isChecked && (
                 <FontAwesome5 name="check" size={12} color="#ffffff" />
               )}
             </View>
-            <Text className="text-sm text-black">
-              I have read and agree to{' '}
-            </Text>
-            <Link onPress={() => openLink(Constants.expoConfig?.extra?.terms_url)}>
-              <Text>Terms of Service</Text>
-            </Link>
-            <Text className="text-sm text-black"> and </Text>
-            <Link onPress={() => openLink(Constants.expoConfig?.extra?.privacy_url)}>
-              <Text>Privacy Policy</Text>
-            </Link>
+            <View className="flex-1 flex-row flex-wrap items-center">
+              <Text className="text-sm text-gray-700 font-medium">
+                I have read and agree to{' '}
+              </Text>
+              <TouchableOpacity onPress={() => openLink(Constants.expoConfig?.extra?.terms_url)}>
+                <Text className="text-sm text-blue-600 font-semibold underline">Terms of Service</Text>
+              </TouchableOpacity>
+              <Text className="text-sm text-gray-700 font-medium"> and </Text>
+              <TouchableOpacity onPress={() => openLink(Constants.expoConfig?.extra?.privacy_url)}>
+                <Text className="text-sm text-blue-600 font-semibold underline">Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </View>
+
+        {/* GlueStack Alert Dialog */}
+        <AlertDialog isOpen={isPrivacyAlertVisible} onClose={() => setIsPrivacyAlertVisible(false)}>
+          <AlertDialogBackdrop />
+          <AlertDialogContent className="max-w-sm mx-4 bg-white rounded-xl">
+            <AlertDialogHeader className="border-b border-gray-100 pb-3">
+              <Text className="font-bold text-gray-900 text-lg">
+                Terms & Privacy
+              </Text>
+            </AlertDialogHeader>
+            
+            <AlertDialogBody className="py-4">
+              <Text className="text-gray-700 text-base mb-3 leading-relaxed">
+                Please agree to the terms and privacy policy to continue.
+              </Text>
+              <View className="flex-row flex-wrap items-center">
+                <Text className="text-sm text-gray-700 mr-1">Read our </Text>
+                <TouchableOpacity onPress={() => openLink(Constants.expoConfig?.extra?.terms_url)}>
+                  <Text className="text-sm text-blue-600 font-semibold underline">
+                    Terms of Service
+                  </Text>
+                </TouchableOpacity>
+                <Text className="text-sm text-gray-700 mx-1"> and </Text>
+                <TouchableOpacity onPress={() => openLink(Constants.expoConfig?.extra?.privacy_url)}>
+                  <Text className="text-sm text-blue-600 font-semibold underline">
+                    Privacy Policy
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </AlertDialogBody>
+            
+            <AlertDialogFooter className="border-t border-gray-100 pt-3">
+              <HStack space="md" className="w-full justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-700"
+                  onPress={() => setIsPrivacyAlertVisible(false)}
+                >
+                  <ButtonText className="text-gray-700">Cancel</ButtonText>
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-blue-600 px-6"
+                  onPress={() => {
+                    setIsChecked(true);
+                    setIsPrivacyAlertVisible(false);
+                  }}
+                >
+                  <ButtonText className="text-white font-semibold">Agree</ButtonText>
+                </Button>
+              </HStack>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </View>
   );
 }

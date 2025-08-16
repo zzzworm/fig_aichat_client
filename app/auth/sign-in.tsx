@@ -1,3 +1,4 @@
+import { SafeAreaView } from "@/components/common/SafeAreaView";
 import "@/global.css";
 import { useAuthStore } from "@/src/auth/stores/auth.store";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,7 +24,7 @@ const loginSchema = z.object({
 type LoginFormInputs = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
-  const { authenticate, login } = useAuthStore();
+  const { authenticate } = useAuthStore();
 
   const {
     control,
@@ -40,7 +41,7 @@ export default function LoginScreen() {
     try {
       await authenticate(data.email, data.password);
       router.replace('/(tabs)/conversation');
-    } catch (_) {
+    } catch (error) {
       setError("root", {
         message: "Login failed. Please check your email and password.",
       });
@@ -48,109 +49,123 @@ export default function LoginScreen() {
   });
 
   return (
-    <View className="flex-1 p-6 bg-gray-50 dark:bg-gray-800">
-      <View className="items-center justify-start pt-[15%] bg-transparent">
-                <Image
-                  source={require('@/assets/images/react-logo.png')}
-                  className="w-50 h-50"
-                  resizeMode="contain"
-                  alt="Splash Logo"
-                />
-              </View>
-      <Text className="text-2xl font-bold mb-6 mt-2 text-center text-black dark:text-white">
-        AI Chat Demo
-      </Text>
-
-      {errors.root && (
-        <Text className="text-red-500 mb-4 text-center">
-          {errors.root.message}
+    <SafeAreaView className="flex-1 bg-white">
+        {/* Header Section */}
+        <View className="items-center justify-center m-8">
+        <Text className="text-4xl font-bold text-blue-600 mb-4 text-center">
+          Welcome Back
         </Text>
-      )}
-
-      {/* Email */}
-      <View className="mb-4">
-        <Text className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-          Email
-        </Text>
-        <Controller
-          control={control}
-          name="email"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              className={`border rounded-md p-3 ${
-                errors.email
-                  ? "border-red-500"
-                  : "border-gray-300 dark:border-gray-600"
-              } text-black dark:text-white`}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-            />
-          )}
-        />
-        {errors.email && (
-          <Text className="text-red-500 mt-1 text-sm">
-            {errors.email.message}
-          </Text>
-        )}
+      </View>
+      
+      {/* Logo Section */}
+      <View className="items-center justify-center">
+        <View className="bg-blue-50 rounded-full p-6 border border-blue-200">
+          <Image
+            source={require('@/assets/images/react-logo.png')}
+            className="w-24 h-24"
+            resizeMode="contain"
+            alt="Splash Logo"
+          />
+        </View>
       </View>
 
-      {/* Password */}
-      <View className="mb-6">
-        <Text className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-          Password
-        </Text>
-        <Controller
-          control={control}
-          name="password"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              className={`border rounded-md p-3 ${
-                errors.password
-                  ? "border-red-500"
-                  : "border-gray-300 dark:border-gray-600"
-              } text-black dark:text-white`}
-              placeholder="Enter your password"
-              secureTextEntry
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-            />
-          )}
-        />
-        {errors.password && (
-          <Text className="text-red-500 mt-1 text-sm">
-            {errors.password.message}
+      {/* Form Section */}
+      <View className="mx-6 mt-10">
+
+        {errors.root && (
+          <Text className="text-red-500 mb-4 text-center">
+            {errors.root.message}
           </Text>
         )}
-      </View>
 
-      {/* Submit */}
-      <TouchableOpacity
-        className="bg-blue-500 rounded-md p-3 items-center dark:bg-blue-700"
-        onPress={onSubmit}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text className="text-white font-medium">Log In</Text>
-        )}
-      </TouchableOpacity>
-
-      {/* Link to Login Screen */}
-      <View className="mt-6 text-center">
-        <Link asChild push href={"/auth/sign-up"}>
-          <TouchableOpacity>
-            <Text className="text-sm font-medium text-blue-500 dark:text-blue-400">
-              Don't have an account? Sign up
+        {/* Email */}
+        <View className="mb-4">
+          <Text className="text-sm font-semibold mb-2 text-gray-700">
+            Email
+          </Text>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                className={`border rounded-2xl p-4 bg-gray-50 ${
+                  errors.email
+                    ? "border-red-500"
+                    : "border-gray-200"
+                } text-gray-900`}
+                placeholder="Enter your email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+              />
+            )}
+          />
+          {errors.email && (
+            <Text className="text-red-500 mt-1 text-sm">
+              {errors.email.message}
             </Text>
-          </TouchableOpacity>
-        </Link>
+          )}
+        </View>
+
+        {/* Password */}
+        <View className="mb-6">
+          <Text className="text-sm font-semibold mb-2 text-gray-700">
+            Password
+          </Text>
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                className={`border rounded-2xl p-4 bg-gray-50 ${
+                  errors.password
+                    ? "border-red-500"
+                    : "border-gray-200"
+                } text-gray-900`}
+                placeholder="Enter your password"
+                secureTextEntry
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+              />
+            )}
+          />
+          {errors.password && (
+            <Text className="text-red-500 mt-1 text-sm">
+              {errors.password.message}
+            </Text>
+          )}
+        </View>
+
+        {/* Submit */}
+        <TouchableOpacity
+          className="bg-blue-600 rounded-2xl p-4 items-center mb-4 border border-blue-500"
+          onPress={onSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white font-bold text-lg">Sign In</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Link to Sign Up */}
+        <View className="items-center py-4">
+          <Link asChild push href={"/auth/sign-up"}>
+            <TouchableOpacity>
+                              <Text className="text-sm font-medium text-gray-700">
+                  Don&apos;t have an account?{' '}
+                  <Text className="text-blue-600 font-semibold underline">
+                    Sign up
+                  </Text>
+                </Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

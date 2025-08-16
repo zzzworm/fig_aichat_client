@@ -1,6 +1,7 @@
+import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
 import { useAuthStore } from "@/src/auth/stores/auth.store";
-import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import { ElevenLabsProvider } from "@elevenlabs/react-native";
 import {
   DarkTheme,
   DefaultTheme,
@@ -11,7 +12,6 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import "react-native-reanimated";
-import { ElevenLabsProvider } from "@elevenlabs/react-native";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
