@@ -35,10 +35,10 @@ export const setUnauthorizedCallback = (callback: () => void) => {
 
 const StrapiClient = StrapiSDK as unknown as { new (config: any): Strapi };
 
-console.log('env api url:', process.env.EXPO_PUBLIC_API_URL);
+console.log('env api url:', Constants.expoConfig?.extra?.apiUrl);
 // Initialize Strapi without token first
 const strapi = new StrapiClient({
-  url: process.env.EXPO_PUBLIC_API_URL,
+  url: Constants.expoConfig?.extra?.apiUrl,
   axiosOptions: {
     timeout: 30000, // 设置超时时间为30秒
     paramsSerializer: function(params) {

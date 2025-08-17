@@ -1,7 +1,8 @@
-import { useSpeechStore } from '../stores/speech.store';
-import { Platform } from 'react-native';
 import { createAudioPlayer } from 'expo-audio';
+import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
+import { useSpeechStore } from '../stores/speech.store';
 import { audioRouteController } from './audio-route';
 
 const setSpeeching = useSpeechStore.getState().setSpeeching;
@@ -21,7 +22,7 @@ interface ElevenLabsSpeechOptions {
  */
 class ElevenLabsSpeechService {
   private readonly baseUrl = 'https://api.elevenlabs.io/v1';
-  private readonly backendUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:1335';
+  private readonly backendUrl = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:1335';
   private apiKey: string | null = null;
   private currentAudio: any = null;
   private audioPlayer: any = null;
