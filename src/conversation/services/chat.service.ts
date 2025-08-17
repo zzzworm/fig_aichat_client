@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/src/auth/stores/auth.store';
 import { StrapiResponse } from 'strapi-sdk-js';
 import strapi from '../../api/client';
 import { AICharacter, AIConversation, ConversationUserMessage } from '../types';
@@ -18,12 +19,18 @@ class ChatService {
 
   async getConversationList(characterId: string, page: number, pageSize: number): Promise<StrapiResponseWithMeta<AIConversation[]>> {
     try {
+      const user = useAuthStore.getState().user;
       const response = await strapi.find<AIConversation>('chat-conversations', {
         filters: {
           ai_character: {
               documentId: {
                 $eq: characterId,
               },
+          },
+          user: {
+            documentId: {
+              $eq: user?.documentId,
+            },
           },
         },
         sort: 'createdAt:desc',
